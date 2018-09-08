@@ -20,10 +20,12 @@ class User(db.Model):
             'name': self.name,
             'phone': self.phone,
             'profile_picture_url': self.profile_picture_url,
-            'leaves_from_home': self.leaves_from_home.isoformat(),
-            'leaves_from_work': self.leaves_from_work.isoformat(),
             'addresses': [a.to_dict() for a in self.addresses]
         }
+        if self.leaves_from_home:
+            d['leaves_from_home'] = self.leaves_from_home.isoformat()
+        if self.leaves_from_work:
+            d['leaves_from_work'] = self.leaves_from_work.isoformat()
         if not public:
             d['email'] = self.email
         if self.car:
@@ -52,6 +54,7 @@ class Car(db.Model):
     color = db.Column(db.String(255))
     registration_number = db.Column(db.String(255))
     seats = db.Column(db.Integer)
+    extra_info = db.Column(db.Text)
 
     def to_dict(self):
         exclude = ['id', 'user_id']
