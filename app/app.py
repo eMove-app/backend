@@ -55,7 +55,7 @@ def login():
         return Response.format(None)
 
 
-@app.route('/car', methods=['POST'], endpoint='add_update_car')
+@app.route('/car', methods=['POST', 'PUT'], endpoint='add_update_car')
 def add_car():
     user = g.current_user
     if not user:
