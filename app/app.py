@@ -9,7 +9,7 @@ def me():
     u = g.current_user
     if u is not None:
         return Response.format(u.to_dict())
-    return Response.empty()
+    return Response.empty(code=403)
 
 
 @app.route('/login', methods=['POST'])

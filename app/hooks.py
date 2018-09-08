@@ -5,7 +5,8 @@ from .models.user import User
 
 
 def identity_token(user):
-    return jwt.encode({'id': user.id}, 'secret', algorithm='HS256').decode('utf-8')
+    return jwt.encode({'id': user.id}, app.config['JWT_SECRET'], algorithm='HS256').decode('utf-8')
+
 
 @app.before_request
 def set_current_identity():
@@ -15,7 +16,7 @@ def set_current_identity():
         token = request.headers.get('x-token')
         g.identity_token = token
         if token:
-            payload = jwt.decode(token, 'secret', algorithms=['HS256'])
+            payload = jwt.decode(token, app.config['JWT_SECRET'], algorithms=['HS256'])
             if payload is not None:
                 uid = payload.get('id')
                 g.current_user = User.query.filter_by(id=uid).first()
