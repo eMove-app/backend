@@ -35,10 +35,12 @@ def find_rides(lat, lng):
                 'user': ride.user.to_dict(True),
                 'initial': {
                     'values': current_values,
+                    'points': [p.to_dict() for p in points],
                     'directions': current_directions
                 },
                 'updated': {
                     'values': new_values,
+                    'points': [p.to_dict() for p in points] + [{ 'lat': lat, 'lng': lng }],
                     'directions': new_directions
                 }
             })
