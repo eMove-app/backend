@@ -2,7 +2,9 @@ from flask import request, g
 import facebook
 from .common import _app as app, db, Response
 from .models.user import User, AssociatedAccount, Car, AddressType, Address
+from .models.rides import Ride, RideStatus, RidePoint, PointType
 from .hooks import *
+from .helpers import find_rides
 from datetime import time
 
 
@@ -59,7 +61,7 @@ def login():
 def add_car():
     user = g.current_user
     if not user:
-        return Response.empty(403)
+        return Response.empty(code=403)
     fields = request.form
     forbidden = ('id', 'user_id')
     for k in forbidden:
@@ -80,7 +82,7 @@ def add_car():
 def add_address():
     user = g.current_user
     if not user:
-        return Response.empty(403)
+        return Response.empty(code=403)
     forbidden = ('id', 'user_id')
     fields = { k: v for k, v in request.form.items() if k not in forbidden }
     if 'type' in fields:
@@ -96,14 +98,14 @@ def add_address():
 def edit_address(id):
     user = g.current_user
     if not user:
-        return Response.empty(403)
+        return Response.empty(code=403)
     forbidden = ('id', 'user_id')
     fields = { k: v for k, v in request.form.items() if k not in forbidden }
     if 'type' in fields:
         fields['type'] = AddressType[fields['type']]
     address = Address.query.filter_by(id=id, user_id=user.id).first()
     if not address:
-        return Response.empty(404)
+        return Response.empty(code=404)
     for k, v in fields.items():
         setattr(address, k, v)
     db.session.commit()
@@ -114,10 +116,74 @@ def edit_address(id):
 def delete_address(id):
     user = g.current_user
     if not user:
-        return Response.empty(403)
+        return Response.empty(code=403)
     address = Address.query.filter_by(id=id, user_id=user.id).first()
     if not address:
-        return Response.empty(404)
+        return Response.empty(code=404)
     db.session.delete(address)
     db.session.commit()
     return Response.format(True)
+
+
+# Rides
+@app.route('/rides/action/start', methods=['POST'], endpoint='start_ride')
+def start_ride():
+    user = g.current_user
+    if not user:
+        return Response.empty(code=403)
+    ride = Ride()
+    ride.user = user
+    ride.status = RideStatus.active
+    time_names = ('hour', 'minute', 'second')
+    if request.is_json:
+        form = request.get_json()
+    else:
+        form = request.form
+    ride.start_time = time(**dict(zip(time_names, map(int, form['start_time'].split(':')))))
+    start_point = RidePoint()
+    start_point.type = PointType.start
+    start_point.rank = 0
+    end_point = RidePoint()
+    end_point.type = PointType.end
+    end_point.rank = 1
+    print(form)
+    points = { 'start_point': start_point, 'end_point': end_point }
+    forbidden = ('id', 'ride_id', 'user_id')
+    for key, point in points.items():
+        point.ride = ride
+        point.user = user
+        fields = { k: v for k, v in form[key].items() if k not in forbidden }
+        for k, v in fields.items():
+            setattr(point, k, v)
+    ride.points = [start_point, end_point]
+    db.session.add(ride)
+    db.session.commit()
+    return Response.format(True)
+
+
+@app.route('/rides/<int:id>', methods=['GET'], endpoint='get_ride')
+def get_ride(id):
+    user = g.current_user
+    if not user:
+        return Response.empty(code=403)
+    ride = Ride.query.filter_by(id=id).first()
+    if not ride:
+        return Response.empty(code=404)
+    visible = ride.user == user
+    if ride.user != user:
+        for point in ride.points:
+            if point.user == user:
+                visible = True
+    if not visible:
+        return Response.empty(code=403)
+    return Response.format(ride.to_dict())
+
+
+@app.route('/find-ride', methods=['GET'], endpoint='find_ride')
+def find_ride():
+    user = g.current_user
+    if not user:
+        return Response.empty(code=403)
+    lat = float(request.args.get('lat', 0))
+    lng = float(request.args.get('lng', 0))
+    return Response.format(find_rides(lat, lng))

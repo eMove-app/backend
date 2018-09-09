@@ -1,4 +1,4 @@
-from .common import db, Model
+from .common import db
 import uuid
 from sqlalchemy.event import listens_for
 from enum import Enum
@@ -19,8 +19,7 @@ class User(db.Model):
             'uuid': self.uuid,
             'name': self.name,
             'phone': self.phone,
-            'profile_picture_url': self.profile_picture_url,
-            'addresses': [a.to_dict() for a in self.addresses]
+            'profile_picture_url': self.profile_picture_url
         }
         if self.leaves_from_home:
             d['leaves_from_home'] = self.leaves_from_home.isoformat()
@@ -28,8 +27,9 @@ class User(db.Model):
             d['leaves_from_work'] = self.leaves_from_work.isoformat()
         if not public:
             d['email'] = self.email
-        if self.car:
-            d['car'] = self.car.to_dict()
+            d['addresses'] = [a.to_dict() for a in self.addresses]
+            if self.car:
+                d['car'] = self.car.to_dict()
         return d
 
 
