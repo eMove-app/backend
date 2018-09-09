@@ -165,6 +165,7 @@ def start_ride():
     db.session.commit()
     r = ride.to_dict()
     r['directions'] = directions([start_point.coordinates(), end_point.coordinates()])
+    del r['directions'][0]['legs']
     return Response.format(r)
 
 
@@ -185,6 +186,7 @@ def get_ride(id):
         return Response.empty(code=403)
     r = ride.to_dict()
     r['directions'] = directions([p.coordinates() for p in ride.points])
+    del r['directions'][0]['legs']
     return Response.format(r)
 
 

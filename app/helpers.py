@@ -27,6 +27,8 @@ def find_rides(lat, lng):
         for leg in new_directions["legs"]:
             for k in new_values.keys():
                 new_values[k] += leg[k]["value"]
+        del current_directions['legs']
+        del new_directions['legs']
         if current_values['duration'] * (1 + threshhold) > new_values['duration']:
             eligible_rides.append({
                 'id': ride.id,
