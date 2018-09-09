@@ -4,7 +4,7 @@ from .common import _app as app, db, Response
 from .models.user import User, AssociatedAccount, Car, AddressType, Address
 from .models.rides import Ride, RideStatus, RidePoint, PointType
 from .hooks import *
-from .helpers import find_rides
+from .helpers import find_rides, directions
 from datetime import time
 
 
@@ -163,7 +163,9 @@ def start_ride():
     db.session.flush()
     db.session.refresh(ride)
     db.session.commit()
-    return Response.format({ 'id': ride.id })
+    r = ride.to_dict()
+    r['directions'] = directions([start_point.coordinates(), end_point.coordinates()])
+    return Response.format(r)
 
 
 @app.route('/rides/<int:id>', methods=['GET'], endpoint='get_ride')
@@ -181,7 +183,9 @@ def get_ride(id):
                 visible = True
     if not visible:
         return Response.empty(code=403)
-    return Response.format(ride.to_dict())
+    r = ride.to_dict()
+    r['directions'] = directions([p.coordinates() for p in ride.points])
+    return Response.format(r)
 
 
 @app.route('/find-ride', methods=['GET'], endpoint='find_ride')
