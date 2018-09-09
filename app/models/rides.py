@@ -52,6 +52,24 @@ class RidePoint(db.Model):
             'lat': self.lat,
             'lng': self.lng
         }
+        return d
 
     def coordinates(self):
         return self.lat, self.lng
+
+#
+# class JoinRequestStatus(Enum):
+#     pending = 0
+#     accepted = 1
+#     declined = 2
+#
+#
+# class JoinRequest(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+#     user = db.relationship('User', backref=db.backref('ride_points', lazy=False))
+#     status = db.Column(db.Enum(JoinRequestStatus))
+#     ride_id = db.Column(db.Integer, db.ForeignKey('ride.id'), nullable=False)
+#     ride = db.relationship('Ride', backref=db.backref('points', lazy=False))
+#     lat = db.Column(db.Float)
+#     lng = db.Column(db.Float)

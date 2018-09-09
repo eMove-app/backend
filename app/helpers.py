@@ -29,6 +29,7 @@ def find_rides(lat, lng):
                 new_values[k] += leg[k]["value"]
         if current_values['duration'] * (1 + threshhold) > new_values['duration']:
             eligible_rides.append({
+                'id': ride.id,
                 'user': ride.user.to_dict(True),
                 'initial': {
                     'values': current_values,
@@ -47,9 +48,13 @@ def directions(coordinates):
     if len(waypoints) > 1:
         waypoints.insert(0, 'optimize:true')
     d = gmaps.directions(coordinates[0], coordinates[-1], waypoints=coordinates[1:-1], mode="driving", departure_time=now)
-    keep = ("start_location", "end_location", "polyline", "distance", "duration")
+    keep = ("start_location", "end_location", "polyline", "distance", "duration", "steps")
     for leg in d[0]["legs"]:
         for k in list(leg.keys()):
             if k not in keep:
                 del leg[k]
+        for step in leg["steps"]:
+            for k in list(step.keys()):
+                if k not in keep:
+                    del step[k]
     return d
