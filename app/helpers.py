@@ -27,8 +27,15 @@ def find_rides(lat, lng):
         for leg in new_directions["legs"]:
             for k in new_values.keys():
                 new_values[k] += leg[k]["value"]
+        waypoint_idx = new_directions['waypoint_order'][0]
+        eta = 0
+        for leg in new_directions['legs'][:waypoint_idx+1]:
+            eta += leg['duration']['value']
         del current_directions['legs']
         del new_directions['legs']
+        delta = {}
+        for k in current_values.keys():
+            delta[k] = new_values[k] - current_values[k]
         if current_values['duration'] * (1 + threshhold) > new_values['duration']:
             eligible_rides.append({
                 'id': ride.id,
@@ -41,7 +48,9 @@ def find_rides(lat, lng):
                 'updated': {
                     'values': new_values,
                     'directions': new_directions
-                }
+                },
+                'delta': delta,
+                'eta': eta
             })
     return sorted(eligible_rides, key=lambda ride: ride['updated']['values']['duration'] - ride['initial']['values']['duration'])
 
