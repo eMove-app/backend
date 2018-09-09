@@ -2,7 +2,7 @@ from flask import request, g
 import facebook
 from .common import _app as app, db, Response
 from .models.user import User, AssociatedAccount, Car, AddressType, Address
-from .models.rides import Ride, RideStatus, RidePoint, PointType
+from .models.rides import Ride, RideStatus, RidePoint, PointType, JoinRequest, JoinRequestStatus
 from .hooks import *
 from .helpers import find_rides, directions
 from datetime import time
@@ -196,3 +196,86 @@ def find_ride():
     lat = float(request.args.get('lat', 0))
     lng = float(request.args.get('lng', 0))
     return Response.format(find_rides(lat, lng))
+
+
+# Join requests
+@app.route('/join-requests', methods=['POST'], endpoint='add_join_request')
+def add_join_request():
+    user = g.current_user
+    if not user:
+        return Response.empty(code=403)
+    if request.is_json:
+        fields = request.get_json()
+    else:
+        fields = request.form
+    forbidden = ('id', 'user_id', 'status')
+    for k in forbidden:
+        if k in fields:
+            del fields[k]
+    req = JoinRequest()
+    for k, v in fields.items():
+        setattr(req, k, v)
+    req.user = user
+    req.status = JoinRequestStatus.pending
+    db.session.add(req)
+    db.session.commit()
+    db.session.refresh(req)
+    return Response.format(req.to_dict())
+
+
+@app.route('/join-requests/<int:id>', methods=['GET'], endpoint='get_join_request')
+def get_join_request(id):
+    user = g.current_user
+    if not user:
+        return Response.empty(code=403)
+    req = JoinRequest.query.filter_by(id=id).first()
+    if req is None:
+        return Response.empty(code=404)
+    if req.user != user and req.ride.user != user:
+        return Response.empty(code=403)
+    return Response.format(req.to_dict())
+
+
+@app.route('/join-requests/<int:id>/actions/<action>', methods=['GET'], endpoint='action_request')
+def request_action(id, action):
+    user = g.current_user
+    if not user:
+        return Response.empty(code=403)
+    req = JoinRequest.query.filter_by(id=id).first()
+    if req is None:
+        return Response.empty(code=404)
+    if req.ride.user != user:
+        return Response.empty(code=403)
+    status = JoinRequestStatus[action]
+    req.status = status
+    if status == JoinRequestStatus.accepted:
+        ride = req.ride
+        points = ride.points
+        points.sort(key=lambda p: p.rank)
+        points[-1].rank += 1
+        new_point = RidePoint(lat=req.lat, lng=req.lng, type=PointType.passenger, rank=points[-1].rank-1)
+        new_point.ride = ride
+        new_point.user = req.user
+        points.insert(len(points)-2, new_point)
+        coordinates = [p.coordinates() for p in points]
+        d = directions(coordinates)
+        if 'waypoint_order' in d:
+            new_ranks = dict(zip(d['waypoint_order'], range(len(d['waypoint_order']))))
+            for i in range(1, len(points) - 1):
+                points[i].rank = 1 + new_ranks[i]
+            points[-1].rank += 1
+        db.session.add(new_point)
+    db.session.commit()
+    return Response.format(True)
+
+
+@app.route('/join-requests', methods=['GET'], endpoint='get_join_requests')
+def get_join_requests():
+    user = g.current_user
+    if not user:
+        return Response.empty(code=403)
+    ride_id = int(request.args.get('ride_id', 0))
+    if ride_id < 0:
+        return Response.empty(code=400)
+    requests = JoinRequest.query.filter_by(status=JoinRequestStatus.pending, ride_id=ride_id).all()
+    return Response.format([r.to_dict() for r in requests])
