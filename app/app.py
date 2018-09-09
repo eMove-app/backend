@@ -138,7 +138,11 @@ def start_ride():
     if request.is_json:
         form = request.get_json()
     else:
-        form = request.form
+        form = { k: v for k, v in request.form.items() }
+        for k1 in ('start_point', 'end_point'):
+            form[k1] = {}
+            for k2 in ('lat', 'lng'):
+                form[k1][k2] = form.get("{0}[{1}]".format(k1, k2))
     ride.start_time = time(**dict(zip(time_names, map(int, form['start_time'].split(':')))))
     start_point = RidePoint()
     start_point.type = PointType.start
