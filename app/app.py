@@ -146,7 +146,6 @@ def start_ride():
     end_point = RidePoint()
     end_point.type = PointType.end
     end_point.rank = 1
-    print(form)
     points = { 'start_point': start_point, 'end_point': end_point }
     forbidden = ('id', 'ride_id', 'user_id')
     for key, point in points.items():
@@ -157,8 +156,10 @@ def start_ride():
             setattr(point, k, v)
     ride.points = [start_point, end_point]
     db.session.add(ride)
+    db.session.flush()
+    db.session.refresh(ride)
     db.session.commit()
-    return Response.format(True)
+    return Response.format({ 'id': ride.id })
 
 
 @app.route('/rides/<int:id>', methods=['GET'], endpoint='get_ride')
